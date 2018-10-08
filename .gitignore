@@ -1,0 +1,11 @@
+/androidx
+/benchmarks
+/com
+/java
+/javax
+/jsr166
+/junit
+/mock_android
+/org
+package.xml
+source.properties
