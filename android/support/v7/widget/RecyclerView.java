@@ -475,6 +475,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
     /**
      * The callback to convert view info diffs into animations.
+     * 调用动画的4个api，把View信息的差异转为动画的回调方法？
      */
     private final ViewInfoStore.ProcessCallback mViewInfoProcessCallback =
             new ViewInfoStore.ProcessCallback() {
@@ -1099,12 +1100,14 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * @param layout LayoutManager to use
      */
     public void setLayoutManager(LayoutManager layout) {
+        // 已设置
         if (layout == mLayout) {
             return;
         }
         stopScroll();
         // TODO We should do this switch a dispatchLayout pass and animate children. There is a good
         // chance that LayoutManagers will re-use views.
+        // TODO: Silion 移除之前的LayoutManager，清楚缓存
         if (mLayout != null) {
             // end all running animations
             if (mItemAnimator != null) {
@@ -1124,6 +1127,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         }
         // this is just a defensive measure for faulty item animators.
         mChildHelper.removeAllViewsUnfiltered();
+		// TODO: Silion 添加新的LayoutManager
         mLayout = layout;
         if (layout != null) {
             if (layout.mRecyclerView != null) {
@@ -1356,6 +1360,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         if (mItemDecorations.isEmpty()) {
             setWillNotDraw(false);
         }
+		// TODO: Silion 添加分割线对象
         if (index < 0) {
             mItemDecorations.add(decor);
         } else {
@@ -2552,6 +2557,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             // A child view e.g. a button may still get the click.
             return false;
         }
+		// TODO: silion_todo 分发给OnItemTouchListener处理
         if (dispatchOnItemTouchIntercept(e)) {
             cancelTouch();
             return true;
@@ -2654,6 +2660,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         final int listenerCount = mOnItemTouchListeners.size();
         for (int i = 0; i < listenerCount; i++) {
             final OnItemTouchListener listener = mOnItemTouchListeners.get(i);
+			// TODO: silion_todo 把事件分发给OnItemTouchListener处理
             listener.onRequestDisallowInterceptTouchEvent(disallowIntercept);
         }
         super.requestDisallowInterceptTouchEvent(disallowIntercept);
@@ -2664,6 +2671,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         if (mLayoutFrozen || mIgnoreMotionEventTillDown) {
             return false;
         }
+		// TODO: silion_todo 分发给OnItemTouchListener处理
         if (dispatchOnItemTouch(e)) {
             cancelTouch();
             return true;
@@ -2988,6 +2996,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * @param animator The ItemAnimator being set. If null, no animations will occur
      * when changes occur to the items in this RecyclerView.
      */
+    /**
+     * RecyclerView 设置动画的入口，逻辑就是清除旧的 Listener，设置新的 Listener
+     */
     public void setItemAnimator(ItemAnimator animator) {
         if (mItemAnimator != null) {
             mItemAnimator.endAnimations();
@@ -3146,6 +3157,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
     }
 
     /**
+     * dispatchLayout 方法目的是 layout RecyclerView 的 childview，并且记录动画执行的过程、变更。
      * Wrapper around layoutChildren() that handles animating changes caused by layout.
      * Animations work on the assumption that there are five different kinds of items
      * in play:
@@ -3274,6 +3286,11 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * - decide which animation should run
      * - save information about current views
      * - If necessary, run predictive layout and save its information
+     * 这是布局的第一步：
+     * - 进行 adapter 布局的更新
+     * - 决定执行哪个动画
+     * - 保存当前 view 的信息
+     * - 如果有必要，运行 predictive layout
      */
     private void dispatchLayoutStep1() {
         mState.assertLayoutStep(State.STEP_START);
@@ -3391,6 +3408,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
     /**
      * The final step of the layout where we save the information about views for animations,
      * trigger animations and do any necessary cleanup.
+     * layout 的最后一个步骤，保存 view 动画的信息，执行动画，状态清理
      */
     private void dispatchLayoutStep3() {
         mState.assertLayoutStep(State.STEP_ANIMATIONS);
@@ -3446,6 +3464,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             }
 
             // Step 4: Process view info lists and trigger animations
+            // 根据一些保存的 flag 状态去触发动画api
             mViewInfoStore.process(mViewInfoProcessCallback);
         }
 
@@ -3643,8 +3662,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         }
     }
 
+    /**
+     * 把所有View的layoutParams.mInsetsDirty置为true
+     */
     void markItemDecorInsetsDirty() {
         final int childCount = mChildHelper.getUnfilteredChildCount();
+		// TODO: Silion 遍历将子View的LayoutParams.mInsetsDirty设为true
         for (int i = 0; i < childCount; i++) {
             final View child = mChildHelper.getUnfilteredChildAt(i);
             ((LayoutParams) child.getLayoutParams()).mInsetsDirty = true;
@@ -3654,10 +3677,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
     @Override
     public void draw(Canvas c) {
+        // TODO: 在父类View的draw方法会调用onDraw方法(绘制自己)和dispatchDraw(绘制子View)
         super.draw(c);
 
         final int count = mItemDecorations.size();
         for (int i = 0; i < count; i++) {
+			// TODO: Silion 调用分割线对象的onDrawOver方法，此时item view已经绘制完，绘制顺序就是 Decoration 的 onDraw，ItemView的 onDraw，Decoration 的 onDrawOver
             mItemDecorations.get(i).onDrawOver(c, this, mState);
         }
         // TODO If padding is not 0 and clipChildrenToPadding is false, to draw glows properly, we
@@ -3719,6 +3744,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
         final int count = mItemDecorations.size();
         for (int i = 0; i < count; i++) {
+			// TODO: Silion 调用分割线对象的onDraw方法
             mItemDecorations.get(i).onDraw(c, this, mState);
         }
     }
@@ -4319,6 +4345,13 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                 view.getBottom() + insets.bottom + lp.bottomMargin);
     }
 
+    /**
+     * 首先 getItemDecorInsetsForChild 方法是在 RecyclerView 进行 measureChild 时调用的。
+     * 目的就是为了取出 RecyclerView 的 ChildView 中的分割线属性 --- 在 LayoutParams 中缓存的 mDecorInsets 。
+     * 而 mDecorInsets 就是 Rect 对象， 其保存记录的是所有添加分割线需要的空间累加的总和，由分割线的 getItemOffsets 方法影响。
+     * 最后在 measureChild 方法里，将分割线 ItemDecoration 的尺寸加入到 itemView 的 padding 中
+     * 当 mInsetsDirty 为 false 时，说明缓存可用，直接取出可以，当 mInsetsDirty 为 true 时，说明缓存的分割线属性就需要重新计算了
+     */
     Rect getItemDecorInsetsForChild(View child) {
         final LayoutParams lp = (LayoutParams) child.getLayoutParams();
         if (!lp.mInsetsDirty) {
@@ -4334,6 +4367,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         final int decorCount = mItemDecorations.size();
         for (int i = 0; i < decorCount; i++) {
             mTempRect.set(0, 0, 0, 0);
+			// TODO: Silion 所有添加分割线需要的空间累加的总和， 重写getItemOffsets
             mItemDecorations.get(i).getItemOffsets(mTempRect, child, this, mState);
             insets.left += mTempRect.left;
             insets.top += mTempRect.top;
@@ -5897,10 +5931,16 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             }
         }
 
+        /**
+         * 把缓存View的layoutParams.mInsetsDirty置为true
+         */
         void markItemDecorInsetsDirty() {
+            // TODO: Silion 缓存集合
             final int cachedCount = mCachedViews.size();
             for (int i = 0; i < cachedCount; i++) {
+				// TODO: Silion 缓存的对象是ViewHolder
                 final ViewHolder holder = mCachedViews.get(i);
+				// TODO: Silion 从ViewHolder拿到View并且把layoutParams.mInsetsDirty置为true
                 LayoutParams layoutParams = (LayoutParams) holder.itemView.getLayoutParams();
                 if (layoutParams != null) {
                     layoutParams.mInsetsDirty = true;
@@ -11367,6 +11407,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         public @NonNull ItemHolderInfo recordPreLayoutInformation(@NonNull State state,
                 @NonNull ViewHolder viewHolder, @AdapterChanges int changeFlags,
                 @NonNull List<Object> payloads) {
+            // TODO: Silion 记录 layout 之前的状态信息，这个方法在 dispatchLayoutStep1 之中调用
             return obtainHolderInfo().setFrom(viewHolder);
         }
 
@@ -11396,6 +11437,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
          */
         public @NonNull ItemHolderInfo recordPostLayoutInformation(@NonNull State state,
                 @NonNull ViewHolder viewHolder) {
+            // TODO: Silion 记录 layout 过程完成时，ItemView 的信息，它在 dispatchLayoutStep3 方法中调用
             return obtainHolderInfo().setFrom(viewHolder);
         }
 

@@ -41,6 +41,7 @@ class ItemTouchUIUtilImpl {
                     view.setTag(R.id.item_touch_helper_previous_elevation, originalElevation);
                 }
             }
+			// TODO: Silion 调用Honeycomb的onDraw
             super.onDraw(c, recyclerView, view, dX, dY, actionState, isCurrentlyActive);
         }
 
@@ -87,6 +88,7 @@ class ItemTouchUIUtilImpl {
         @Override
         public void onDraw(Canvas c, RecyclerView recyclerView, View view,
                 float dX, float dY, int actionState, boolean isCurrentlyActive) {
+            // TODO: Silion 在3.0以上可以直接ViewCompat.setTranslation方法进行移动
             ViewCompat.setTranslationX(view, dX);
             ViewCompat.setTranslationY(view, dY);
         }
@@ -103,6 +105,7 @@ class ItemTouchUIUtilImpl {
         private void draw(Canvas c, RecyclerView parent, View view,
                 float dX, float dY) {
             c.save();
+			// TODO: Silion 通过移动画布达到选中ItemView的移动效果
             c.translate(dX, dY);
             parent.drawChild(c, view, 0);
             c.restore();

@@ -303,22 +303,34 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
             = new OnItemTouchListener() {
         @Override
         public boolean onInterceptTouchEvent(RecyclerView recyclerView, MotionEvent event) {
+            // 事件给到手势识别器
             mGestureDetector.onTouchEvent(event);
             if (DEBUG) {
                 Log.d(TAG, "intercept: x:" + event.getX() + ",y:" + event.getY() + ", " + event);
             }
             final int action = MotionEventCompat.getActionMasked(event);
-            if (action == MotionEvent.ACTION_DOWN) {
+            if (action == MotionEvent.ACTION_DOWN) {// TODO: Silion 按下事件
+                /**
+                 * ACTION_DOWN—For the first pointer that touches the screen. 
+                 * This starts the gesture. 
+                 * The pointer data for this pointer is always at index 0 in the MotionEvent.
+                 */
+                // TODO: Silion 记录第一个Pointer的id
                 mActivePointerId = event.getPointerId(0);
+				// TODO: Silion 记录初始触摸坐标
                 mInitialTouchX = event.getX();
                 mInitialTouchY = event.getY();
+				// TODO:Silion 初始化手指速度测试类(用来判断滑动有没有变成fling)
                 obtainVelocityTracker();
                 if (mSelected == null) {
+					// TODO: Silion 根据触摸点的坐标找到触摸的View,然后再找到触摸View的Recover动画
                     final RecoverAnimation animation = findAnimation(event);
                     if (animation != null) {
                         mInitialTouchX -= animation.mX;
                         mInitialTouchY -= animation.mY;
+					    // 结束动画
                         endRecoverAnimation(animation.mViewHolder, true);
+						// 清楚集合里的ItemView
                         if (mPendingCleanup.remove(animation.mViewHolder.itemView)) {
                             mCallback.clearView(mRecyclerView, animation.mViewHolder);
                         }
@@ -326,34 +338,44 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                         updateDxDy(event, mSelectedFlags, 0);
                     }
                 }
-            } else if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
+            } else if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {// TODO: Silion 取消或松手事件
                 mActivePointerId = ACTIVE_POINTER_ID_NONE;
                 select(null, ACTION_STATE_IDLE);
-            } else if (mActivePointerId != ACTIVE_POINTER_ID_NONE) {
+            } else if (mActivePointerId != ACTIVE_POINTER_ID_NONE) { //Pointer Id有效
                 // in a non scroll orientation, if distance change is above threshold, we
                 // can select the item
+                /** 
+                 * pointer在一个motion event中出现的顺序是未定的，
+                 * 所以pointer的index在不同的事件中是可变的，
+                 * 但是只要pointer保持active，它的ID是保持不变的
+                 */
+                // TODO: Silion 通过Pointer id找到index
                 final int index = event.findPointerIndex(mActivePointerId);
                 if (DEBUG) {
                     Log.d(TAG, "pointer index " + index);
                 }
                 if (index >= 0) {
+					// TODO: Silion 检查是否可滑动
                     checkSelectForSwipe(action, event, index);
                 }
             }
             if (mVelocityTracker != null) {
                 mVelocityTracker.addMovement(event);
             }
+			// TODO: Silion 如果有选中的item则拦截事件
             return mSelected != null;
         }
 
         @Override
         public void onTouchEvent(RecyclerView recyclerView, MotionEvent event) {
+            // TODO: Silion 事件给到手势识别器，就监听了长按事件
             mGestureDetector.onTouchEvent(event);
             if (DEBUG) {
                 Log.d(TAG,
                         "on touch: x:" + mInitialTouchX + ",y:" + mInitialTouchY + ", :" + event);
             }
             if (mVelocityTracker != null) {
+				// TODO: Silion 速度跟踪器添加事件
                 mVelocityTracker.addMovement(event);
             }
             if (mActivePointerId == ACTIVE_POINTER_ID_NONE) {
@@ -362,6 +384,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
             final int action = MotionEventCompat.getActionMasked(event);
             final int activePointerIndex = event.findPointerIndex(mActivePointerId);
             if (activePointerIndex >= 0) {
+				// TODO: Silion 又调用一次？
                 checkSelectForSwipe(action, event, activePointerIndex);
             }
             ViewHolder viewHolder = mSelected;
@@ -372,10 +395,14 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                 case MotionEvent.ACTION_MOVE: {
                     // Find the index of the active pointer and fetch its position
                     if (activePointerIndex >= 0) {
+						// TODO:   Silion 先更新位置再移动，不断移动的时候改变选中的View的移动距离
                         updateDxDy(event, mSelectedFlags, activePointerIndex);
+						// TODO: Silion 移动ViewHolder，在onDraw方法执行位置的偏移
                         moveIfNecessary(viewHolder);
                         mRecyclerView.removeCallbacks(mScrollRunnable);
+						// TODO: Silion 滚动View
                         mScrollRunnable.run();
+						// TODO: Silion 重绘
                         mRecyclerView.invalidate();
                     }
                     break;
@@ -386,6 +413,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                     }
                     // fall through
                 case MotionEvent.ACTION_UP:
+					// TODO: Silion 抬起后将选中View设为null，状态设回 ACTION_STATE_IDLE
                     select(null, ACTION_STATE_IDLE);
                     mActivePointerId = ACTIVE_POINTER_ID_NONE;
                     break;
@@ -452,11 +480,23 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
      *                     {@code null} if you want to remove ItemTouchHelper from the current
      *                     RecyclerView.
      */
+    /**
+     * RecyclerView 实现 item 的拖曳排序和滑动删除
+     * {https://blog.csdn.net/shedoor/article/details/77326167}
+     * {https://blog.csdn.net/xiatiandefeiyu/article/details/78325836}
+     * 1、ItemTouchHelper将OnItemTouchListener注册进RecyclerView，将自身的ItemDecoration注册进RecyclerView
+     * 2、RecyclerView接收到触摸事件的时候先把事件交给ItemTouchHelper里的OnItemTouchListener处理
+     * 3、OnItemTouchListener在onInterceptTouchEvent中调用select（）方法找到那个itemView可以被标记为选中
+     * 4、OnItemTouchListener在onTouchEvent不断通过updateDxDy(event, mSelectedFlags, activePointerIndex)方法计算偏移量，如果是拖动通过moveIfNecessary（）方法计算有满足的碰撞吗，有的话就回调onMove方法交换位置，最后执行mRecyclerView.invalidate()重写画图
+     * 5、在RecyclerView的重画onDraw（）方法中调用ItemTouchHelper的onDraw方法，最后回调Callback的onChildDraw方法将选中的itemView进行偏移
+     */
     public void attachToRecyclerView(@Nullable RecyclerView recyclerView) {
+        //已经绑定了同一个RecyclerView就返回
         if (mRecyclerView == recyclerView) {
             return; // nothing to do
         }
         if (mRecyclerView != null) {
+			//如果已存在，先释放解绑
             destroyCallbacks();
         }
         mRecyclerView = recyclerView;
@@ -466,16 +506,30 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                     .getDimension(R.dimen.item_touch_helper_swipe_escape_velocity);
             mMaxSwipeVelocity = resources
                     .getDimension(R.dimen.item_touch_helper_swipe_escape_max_velocity);
+			// 开始绑定
             setupCallbacks();
         }
     }
 
     private void setupCallbacks() {
         ViewConfiguration vc = ViewConfiguration.get(mRecyclerView.getContext());
+		//得到认为滑动的最小的距离
         mSlop = vc.getScaledTouchSlop();
+		//添加分割线画法,显然这里不是用来画分割线的
         mRecyclerView.addItemDecoration(this);
+		/** 
+		 * 添加触发事件的监听函数,RecycleView通过mOnItemTouchListener实现和itemtouch的交互
+		 * 是否拦截子类事件
+		 * RecyclerView.onInterceptTouchEvent -> OnItemTouchListener.onInterceptTouchEvent
+		 * 处理触摸事件
+		 * RecyclerView.onTouchEvent -> OnItemTouchListener.onTouchEvent
+		 * 子类调用此方法请求父类不要拦截事件
+		 * RecyclerView.requestDisallowInterceptTouchEvent -> OnItemTouchListener.onRequestDisallowInterceptTouchEvent
+		 */
         mRecyclerView.addOnItemTouchListener(mOnItemTouchListener);
+		//子View被attach或dettach时通知回调
         mRecyclerView.addOnChildAttachStateChangeListener(this);
+		//初始化手势识别器
         initGestureDetector();
     }
 
@@ -499,6 +553,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
         if (mGestureDetector != null) {
             return;
         }
+		// TODO: Silion 识别长按事件，用于实现拖拽
         mGestureDetector = new GestureDetectorCompat(mRecyclerView.getContext(),
                 new ItemTouchHelperGestureListener());
     }
@@ -528,16 +583,22 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                 mRecoverAnimations, mActionState, dx, dy);
     }
 
+    /**
+     * 在Recycler调用父类的onDraw方法进行绘制，还调用了画分割线的回调方法，
+     * 因为ItemTouchHelper是继承ItemDecoration，所以会回调到ItemTouchHelper的onDraw
+     */
     @Override
     public void onDraw(Canvas c, RecyclerView parent, RecyclerView.State state) {
         // we don't know if RV changed something so we should invalidate this index.
         mOverdrawChildPosition = -1;
         float dx = 0, dy = 0;
+		// TODO: Silion 重新计算偏移量
         if (mSelected != null) {
             getSelectedDxDy(mTmpPosition);
             dx = mTmpPosition[0];
             dy = mTmpPosition[1];
         }
+		// TODO: Silion 调用Callback的onDraw方法
         mCallback.onDraw(c, parent, mSelected,
                 mRecoverAnimations, mActionState, dx, dy);
     }
@@ -555,9 +616,10 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
         }
         mDragScrollStartTimeInMs = Long.MIN_VALUE;
         final int prevActionState = mActionState;
-        // prevent duplicate animations
+        // prevent duplicate animations 防止重复动画
         endRecoverAnimation(selected, true);
         mActionState = actionState;
+		// TODO: Silion 状态是拖动，例如长按的时候
         if (actionState == ACTION_STATE_DRAG) {
             // we remove after animation is complete. this means we only elevate the last drag
             // child but that should perform good enough as it is very hard to start dragging a
@@ -570,6 +632,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
         boolean preventLayout = false;
 
         if (mSelected != null) {
+			// TODO: Silion 上一个选中的mSelected
             final ViewHolder prevSelected = mSelected;
             if (prevSelected.itemView.getParent() != null) {
                 final int swipeDir = prevActionState == ACTION_STATE_DRAG ? 0
@@ -579,13 +642,16 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                 final float targetTranslateX, targetTranslateY;
                 int animationType;
                 switch (swipeDir) {
+					// TODO: Silion 左右滑
                     case LEFT:
                     case RIGHT:
                     case START:
                     case END:
                         targetTranslateY = 0;
+					    // 如果参数大于零返回1.0，如果参数小于零返回-1，如果参数为0，则返回signum函数的参数为零
                         targetTranslateX = Math.signum(mDx) * mRecyclerView.getWidth();
                         break;
+					// TODO: Silion 上下移动
                     case UP:
                     case DOWN:
                         targetTranslateX = 0;
@@ -596,15 +662,20 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                         targetTranslateY = 0;
                 }
                 if (prevActionState == ACTION_STATE_DRAG) {
+					// 标记动画状态为拖动
                     animationType = ANIMATION_TYPE_DRAG;
                 } else if (swipeDir > 0) {
+                    // 标记动画状态为可滑动
                     animationType = ANIMATION_TYPE_SWIPE_SUCCESS;
                 } else {
+					// 标记动画状态为滑动取消状态
                     animationType = ANIMATION_TYPE_SWIPE_CANCEL;
                 }
+				// 将选中view的移动距离保存到数组中
                 getSelectedDxDy(mTmpPosition);
                 final float currentTranslateX = mTmpPosition[0];
                 final float currentTranslateY = mTmpPosition[1];
+				// TODO: Silion  定义恢复动画
                 final RecoverAnimation rv = new RecoverAnimation(prevSelected, animationType,
                         prevActionState, currentTranslateX, currentTranslateY,
                         targetTranslateX, targetTranslateY) {
@@ -614,17 +685,20 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                         if (this.mOverridden) {
                             return;
                         }
+						// 上面计算的swipeDir <= 0的时候，就是拖动或者滑动失败的方式
                         if (swipeDir <= 0) {
-                            // this is a drag or failed swipe. recover immediately
+                            // this is a drag or failed swipe. recover immediately 上面计算的swipeDir<=0的时候，就是拖动或者滑动失败的方式
                             mCallback.clearView(mRecyclerView, prevSelected);
                             // full cleanup will happen on onDrawOver
                         } else {
                             // wait until remove animation is complete.
+                            // 滑动动画结束后，将动画加入缓存mPendingCleanup
                             mPendingCleanup.add(prevSelected.itemView);
                             mIsPendingCleanup = true;
                             if (swipeDir > 0) {
                                 // Animation might be ended by other animators during a layout.
                                 // We defer callback to avoid editing adapter during a layout.
+                                // TODO: Silion 滑动成功(滑动距离大于一半)则调用此方法回调 onSwiped 方法(用户可以在子类重写该方法实现滑动删除)
                                 postDispatchSwipe(this, swipeDir);
                             }
                         }
@@ -650,22 +724,29 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
             mSelectedFlags =
                     (mCallback.getAbsoluteMovementFlags(mRecyclerView, selected) & actionStateMask)
                             >> (mActionState * DIRECTION_FLAG_COUNT);
+			// TODO: Silion x y 的开始值赋值为选中itemview的left和top
             mSelectedStartX = selected.itemView.getLeft();
             mSelectedStartY = selected.itemView.getTop();
             mSelected = selected;
 
+            // 拖动状态
             if (actionState == ACTION_STATE_DRAG) {
+				// 回调长按的反馈
                 mSelected.itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
             }
         }
         final ViewParent rvParent = mRecyclerView.getParent();
         if (rvParent != null) {
+			// TODO: Silion 通知RecycleView的父View不拦截子View的事件
             rvParent.requestDisallowInterceptTouchEvent(mSelected != null);
         }
         if (!preventLayout) {
+			// 设置layoutManager条目动画可以执行
             mRecyclerView.getLayoutManager().requestSimpleAnimationsInNextLayout();
         }
+		// 告诉mCallback选中的View已经改变了
         mCallback.onSelectedChanged(mSelected, mActionState);
+		// 重新绘制
         mRecyclerView.invalidate();
     }
 
@@ -683,6 +764,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                     // animations. Instead, we wait and batch.
                     if ((animator == null || !animator.isRunning(null))
                             && !hasRunningRecoverAnim()) {
+                        // TODO: Silion 回调 onSwiped 方法(用户可以在子类重写该方法实现滑动删除)
                         mCallback.onSwiped(anim.mViewHolder, swipeDir);
                     } else {
                         mRecyclerView.post(this);
@@ -819,6 +901,9 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
 
     /**
      * Checks if we should swap w/ another view holder.
+     * 这个方法首先判断一下是否是拖动的状态，不是则直接返回，说明这个方法是为拖动状态准备的
+     * 这个方法根据选中的itemView的将要偏移的值，算出和其他的itemView那些发生了碰撞，
+     * 如果发生了碰撞的话，回调mCallback.onMove方法
      */
     void moveIfNecessary(ViewHolder viewHolder) {
         if (mRecyclerView.isLayoutRequested()) {
@@ -829,6 +914,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
         }
 
         final float threshold = mCallback.getMoveThreshold(viewHolder);
+		// TODO:  Silion 计算新的位置的left，top
         final int x = (int) (mSelectedStartX + mDx);
         final int y = (int) (mSelectedStartY + mDy);
         if (Math.abs(y - viewHolder.itemView.getTop()) < viewHolder.itemView.getHeight() * threshold
@@ -836,6 +922,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                 < viewHolder.itemView.getWidth() * threshold) {
             return;
         }
+	    // TODO: Silion 根据选中itemview的将要偏移量，算出是否和其他发生了碰撞？
         List<ViewHolder> swapTargets = findSwapTargets(viewHolder);
         if (swapTargets.size() == 0) {
             return;
@@ -849,6 +936,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
         }
         final int toPosition = target.getAdapterPosition();
         final int fromPosition = viewHolder.getAdapterPosition();
+		// TODO:Silion 发生了碰撞，回调mCallback的onMove方法，用户在子类实现数据位置交换和通知更新
         if (mCallback.onMove(mRecyclerView, viewHolder, target)) {
             // keep target visible
             mCallback.onMoved(mRecyclerView, viewHolder, fromPosition,
@@ -946,19 +1034,24 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
      * Checks whether we should select a View for swiping.
      */
     boolean checkSelectForSwipe(int action, MotionEvent motionEvent, int pointerIndex) {
+        // TODO: Silion 当已经有选中的View时，或事件不等于滑动事件，或者mActionState=正在被拖动的状态，或者mCallback不支持滑动直接返回false
         if (mSelected != null || action != MotionEvent.ACTION_MOVE
                 || mActionState == ACTION_STATE_DRAG || !mCallback.isItemViewSwipeEnabled()) {
             return false;
         }
+		// TODO: Silion 如果当前mRecyclerView的状态是正在拖动的状态返回false
         if (mRecyclerView.getScrollState() == RecyclerView.SCROLL_STATE_DRAGGING) {
             return false;
         }
+		// TODO: Silion 根据触摸事件找到手指放在哪个子View的位置
         final ViewHolder vh = findSwipedView(motionEvent);
         if (vh == null) {
             return false;
         }
+		// TODO: Silion 得到移动状态，这里调用 Callback#getMovementFlags() 方法
         final int movementFlags = mCallback.getAbsoluteMovementFlags(mRecyclerView, vh);
 
+        // TODO: 通过计算得到滑动的状态参数值
         final int swipeFlags = (movementFlags & ACTION_MODE_SWIPE_MASK)
                 >> (DIRECTION_FLAG_COUNT * ACTION_STATE_SWIPE);
 
@@ -972,17 +1065,22 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
         final float y = motionEvent.getY(pointerIndex);
 
         // Calculate the distance moved
+        // TODO: Silion 计算得到手指水平竖直移动距离
         final float dx = x - mInitialTouchX;
         final float dy = y - mInitialTouchY;
         // swipe target is chose w/o applying flags so it does not really check if swiping in that
         // direction is allowed. This why here, we use mDx mDy to check slope value again.
+        // TODO: Silion 取绝对值
         final float absDx = Math.abs(dx);
         final float absDy = Math.abs(dy);
 
+        // TODO: Silion 小于滑动距离，无效滑动
         if (absDx < mSlop && absDy < mSlop) {
             return false;
         }
         if (absDx > absDy) {
+			
+			// TODO: Silion dx小于0表示手指向左滑动,如果设置的swipeFlags不包括LEFT的话，不做操作，swipeFlags通过重写 Callback#getMovementFlags() 方法调用makeMovementFlags设置？
             if (dx < 0 && (swipeFlags & LEFT) == 0) {
                 return false;
             }
@@ -997,8 +1095,15 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                 return false;
             }
         }
+		// TODO: Silion 当前选中itemview的偏移量归0
         mDx = mDy = 0f;
         mActivePointerId = motionEvent.getPointerId(0);
+		/**
+		 * ACTION_STATE_SWIPE：滑动状态，手指没有长按时滑动
+		 * ACTION_STATE_IDLE：无状态，手指抬起时声明为此状态
+		 * ACTION_STATE_DRAG：长按滑动时的拖动状态
+		 */
+		// TODO: Silion 满足滑动，设置ViewHolder的滑动状态
         select(vh, ACTION_STATE_SWIPE);
         return true;
     }
@@ -1133,6 +1238,9 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
         return null;
     }
 
+    /**
+     * 记录一下水平偏移量mDx ，竖直偏移量mDy
+     */
     void updateDxDy(MotionEvent ev, int directionFlags, int pointerIndex) {
         final float x = ev.getX(pointerIndex);
         final float y = ev.getY(pointerIndex);
@@ -1648,6 +1756,9 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
          * over the View, false otherwise. Default value is <code>true</code>.
          * @see #startSwipe(ViewHolder)
          */
+        /**
+         * 是否支持滑动，可重写该方法禁止滑动？
+         */
         public boolean isItemViewSwipeEnabled() {
             return true;
         }
@@ -1954,6 +2065,7 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
             }
             if (selected != null) {
                 final int count = c.save();
+				// TODO: Silion 走绘制子View方法
                 onChildDraw(c, parent, selected, dX, dY, actionState, true);
                 c.restoreToCount(count);
             }
@@ -2033,9 +2145,22 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
          * @see #onChildDrawOver(Canvas, RecyclerView, ViewHolder, float, float, int,
          * boolean)
          */
+        /**
+         * 子类可以重写该方法实现自定义效果
+         */
         public void onChildDraw(Canvas c, RecyclerView recyclerView,
                 ViewHolder viewHolder,
                 float dX, float dY, int actionState, boolean isCurrentlyActive) {
+            /**
+             * if (Build.VERSION.SDK_INT >= 21) {
+             *     sUICallback = new ItemTouchUIUtilImpl.Lollipop();
+             * } else if (Build.VERSION.SDK_INT >= 11) {
+             *     sUICallback = new ItemTouchUIUtilImpl.Honeycomb();
+             * } else {
+             *     sUICallback = new ItemTouchUIUtilImpl.Gingerbread();
+             * }
+             */
+            // TODO: Silion sUICallback是根据不同的版本生成不同的工具类
             sUICallback.onDraw(c, recyclerView, viewHolder.itemView, dX, dY, actionState,
                     isCurrentlyActive);
         }
@@ -2264,12 +2389,22 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
             return true;
         }
 
+        /**
+         * 这里主要做拖拽的准备
+         * - 找到目标itemview
+         * - 看是否设置了DragFlag
+         * - 记录坐标
+         * - 以ACTION_STATE_DRAG选中
+         * 然后在onTouchEvent中会调用moveIfNecessary处理
+         */
         @Override
         public void onLongPress(MotionEvent e) {
+            // TODO: Silion 根据MotionEvent找到目标子View
             View child = findChildView(e);
             if (child != null) {
                 ViewHolder vh = mRecyclerView.getChildViewHolder(child);
                 if (vh != null) {
+					// TODO: Silion 判断callBack中有没有设置DragFlag
                     if (!mCallback.hasDragFlag(mRecyclerView, vh)) {
                         return;
                     }
@@ -2277,8 +2412,10 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                     // Long press is deferred.
                     // Check w/ active pointer id to avoid selecting after motion
                     // event is canceled.
+                    // TODO: Silion 长按存在延时，检查一下id避免事件取消后还选中ItemView
                     if (pointerId == mActivePointerId) {
                         final int index = e.findPointerIndex(mActivePointerId);
+						// TODO: Silion 记录坐标
                         final float x = e.getX(index);
                         final float y = e.getY(index);
                         mInitialTouchX = x;
@@ -2288,7 +2425,9 @@ public class ItemTouchHelper extends RecyclerView.ItemDecoration
                             Log.d(TAG,
                                     "onlong press: x:" + mInitialTouchX + ",y:" + mInitialTouchY);
                         }
+						// TODO: Silion 是否支持长按，默认是支持
                         if (mCallback.isLongPressDragEnabled()) {
+							// TODO: Silion 以 ACTION_STATE_DRAG 状态选中ItemView
                             select(vh, ACTION_STATE_DRAG);
                         }
                     }
