@@ -485,6 +485,16 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
             mAnchorInfo.reset();
             mAnchorInfo.mLayoutFromEnd = mShouldReverseLayout ^ mStackFromEnd;
             // calculate anchor position and coordinate
+            // TODO: Silion 计算得到锚点
+            /** 
+             * 也就是参考坐标，
+             * 假如以屏幕上方为参考坐标的话，         那么子View就从屏幕上方开始填入RecyclerView，
+             * 如果在下方则从底部开始填充，
+             * 当然RecycleView刚开始显示的时候，          默认是从屏幕上面开始填充的，
+             * 锚点也有可能是在屏幕任何一个位置，
+             * 比如我调用scrollToPosition方法滚动哪一个位置，那么这个子View将在下一次的Onlayout充当锚点，以它为基础向上布局，向下布局，
+             * 找到锚点后就是向上或向下填充子view了
+             */
             updateAnchorInfoForLayout(recycler, state, mAnchorInfo);
             mAnchorInfo.mValid = true;
         }
@@ -545,9 +555,11 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         }
 
         onAnchorReady(recycler, state, mAnchorInfo, firstLayoutDirection);
+		// TODO: Silion 回收以前的itemView
         detachAndScrapAttachedViews(recycler);
         mLayoutState.mInfinite = resolveIsInfinite();
         mLayoutState.mIsPreLayout = state.isPreLayout();
+		// TODO: Silion 调用fill填充子View
         if (mAnchorInfo.mLayoutFromEnd) {
             // fill towards start
             updateLayoutStateToFillStart(mAnchorInfo);
@@ -1220,7 +1232,9 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         ensureLayoutState();
         final int layoutDirection = dy > 0 ? LayoutState.LAYOUT_END : LayoutState.LAYOUT_START;
         final int absDy = Math.abs(dy);
+		// TODO: Silion 通过updateLayoutState修正一些状态，比如锚点在哪，是否有itemView的动画等
         updateLayoutState(layoutDirection, absDy, true, state);
+		// TODO: Silion 通过fill先检查哪些子view超出边界进行回收，然后重新填充新的子View
         final int consumed = mLayoutState.mScrollingOffset
                 + fill(recycler, mLayoutState, state, false);
         if (consumed < 0) {
@@ -1230,6 +1244,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
             return 0;
         }
         final int scrolled = absDy > consumed ? layoutDirection * consumed : dy;
+		// TODO: Silion 通过offsetChildren改变所有子view的top or bottom的值从而达到移动的效果
         mOrientationHelper.offsetChildren(-scrolled);
         if (DEBUG) {
             Log.d(TAG, "scroll req: " + dy + " scrolled: " + scrolled);
@@ -1399,12 +1414,16 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
             if (layoutState.mAvailable < 0) {
                 layoutState.mScrollingOffset += layoutState.mAvailable;
             }
+			// TODO: Silion 回收超过边界的View
             recycleByLayoutState(recycler, layoutState);
         }
+		// TODO: 还有多少剩余空间？
         int remainingSpace = layoutState.mAvailable + layoutState.mExtra;
         LayoutChunkResult layoutChunkResult = mLayoutChunkResult;
+		// TODO: Silion 如果还有剩余空间且还有子View，调用layoutChunk安排下一个子View的位置
         while ((layoutState.mInfinite || remainingSpace > 0) && layoutState.hasMore(state)) {
             layoutChunkResult.resetInternal();
+			// TODO: Silion 测量和布局子View
             layoutChunk(recycler, state, layoutState, layoutChunkResult);
             if (layoutChunkResult.mFinished) {
                 break;
@@ -1442,6 +1461,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
 
     void layoutChunk(RecyclerView.Recycler recycler, RecyclerView.State state,
             LayoutState layoutState, LayoutChunkResult result) {
+        // TODO: Silion 通过next拿到下一个子View
         View view = layoutState.next(recycler);
         if (view == null) {
             if (DEBUG && layoutState.mScrapList == null) {
@@ -1468,8 +1488,11 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
                 addDisappearingView(view, 0);
             }
         }
+		// TODO: Silion 测量子View
         measureChildWithMargins(view, 0, 0);
+		//result.mConsumed=子View总共需要的空间
         result.mConsumed = mOrientationHelper.getDecoratedMeasurement(view);
+		// 计算子View的left，top，right，bottom位置
         int left, top, right, bottom;
         if (mOrientation == VERTICAL) {
             if (isLayoutRTL()) {
@@ -1500,6 +1523,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         }
         // We calculate everything with View's bounding box (which includes decor and margins)
         // To calculate correct layout position, we subtract margins.
+        // TODO: Silion 最后调用 layoutDecoratedWithMargins 方法对子View进行布局
         layoutDecoratedWithMargins(view, left, top, right, bottom);
         if (DEBUG) {
             Log.d(TAG, "laid out child at position " + getPosition(view) + ", with l:"
@@ -2056,8 +2080,10 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
          */
         View next(RecyclerView.Recycler recycler) {
             if (mScrapList != null) {
+				// TODO: Silion 从缓存获取
                 return nextViewFromScrapList();
             }
+			// TODO: Silion 缓存没有，创建
             final View view = recycler.getViewForPosition(mCurrentPosition);
             mCurrentPosition += mItemDirection;
             return view;

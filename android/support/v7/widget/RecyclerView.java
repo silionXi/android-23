@@ -320,6 +320,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                 mLayoutRequestEaten = true;
                 return; //we'll process updates when ice age ends.
             }
+			// TODO: Silion 满足以上条件后执行
             consumePendingUpdateOperations();
         }
     };
@@ -833,6 +834,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
             @Override
             public void offsetPositionsForAdd(int positionStart, int itemCount) {
+                // TODO: Silion 添加
                 offsetPositionRecordsForInsert(positionStart, itemCount);
                 mItemsAddedOrRemoved = true;
             }
@@ -956,6 +958,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
     public void setAdapter(Adapter adapter) {
         // bail out if layout is frozen
         setLayoutFrozen(false);
+		// 设置Adapter
         setAdapterInternal(adapter, false, true);
         requestLayout();
     }
@@ -972,6 +975,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
     private void setAdapterInternal(Adapter adapter, boolean compatibleWithPrevious,
             boolean removeAndRecycleViews) {
         if (mAdapter != null) {
+			// TODO: Silion 如果之前存在Adapter，先移除原来的，注销观察者，和从RecyclerView Detached。
             mAdapter.unregisterAdapterDataObserver(mObserver);
             mAdapter.onDetachedFromRecyclerView(this);
         }
@@ -985,19 +989,24 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             // expected. (e.g. not release children instantly). It is safer to use mLayout's child
             // count.
             if (mLayout != null) {
+				// TODO: Silion 根据参数，决定是否清除原来的ViewHolder?
                 mLayout.removeAndRecycleAllViews(mRecycler);
                 mLayout.removeAndRecycleScrapInt(mRecycler);
             }
             // we should clear it here before adapters are swapped to ensure correct callbacks.
             mRecycler.clear();
         }
+		// TODO: Silion 重置AdapterHelper
         mAdapterHelper.reset();
         final Adapter oldAdapter = mAdapter;
+		// TODO: Silion 更新Adapter
         mAdapter = adapter;
         if (adapter != null) {
+			// TODO:   Silion 注册观察者， mObserver ->RecyclerViewDataObserver
             adapter.registerAdapterDataObserver(mObserver);
             adapter.onAttachedToRecyclerView(this);
         }
+		// TODO: Silion 通知改变
         if (mLayout != null) {
             mLayout.onAdapterChanged(oldAdapter, mAdapter);
         }
@@ -1140,6 +1149,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             }
         }
         mRecycler.updateViewCacheSize();
+		// TODO: Silion onMeasure -> onLayout -> onDraw
         requestLayout();
     }
 
@@ -1357,6 +1367,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             mLayout.assertNotInLayoutOrScroll("Cannot add item decoration during a scroll  or"
                     + " layout");
         }
+		// TODO: Silion 设一下标志位
         if (mItemDecorations.isEmpty()) {
             setWillNotDraw(false);
         }
@@ -1581,14 +1592,18 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         if (mAdapterHelper.hasAnyUpdateTypes(UpdateOp.UPDATE) && !mAdapterHelper
                 .hasAnyUpdateTypes(UpdateOp.ADD | UpdateOp.REMOVE | UpdateOp.MOVE)) {
             TraceCompat.beginSection(TRACE_HANDLE_ADAPTER_UPDATES_TAG);
+			// TODO: Silion 只有更新类型的操作(这里指内容的更新，不影响View位置的改变)
             eatRequestLayout();
             onEnterLayoutOrScroll();
+			// TODO: Silion 先预处理
             mAdapterHelper.preProcess();
             if (!mLayoutRequestEaten) {
                 if (hasUpdatedView()) {
+					// TODO: Silion 有View更新了，调用dispatchLayout方法对RecyclerView重新布局
                     dispatchLayout();
                 } else {
                     // no need to layout, clean state
+                    // TODO: Silion 没有View更新，消耗延迟的更新操作
                     mAdapterHelper.consumePostponedUpdates();
                 }
             }
@@ -1597,6 +1612,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             TraceCompat.endSection();
         } else if (mAdapterHelper.hasPendingUpdates()) {
             TraceCompat.beginSection(TRACE_ON_DATA_SET_CHANGE_LAYOUT_TAG);
+			// TODO: Silion 有位置改变的更新，直接调用dispatchLayout方法对RecyclerView重新布局
             dispatchLayout();
             TraceCompat.endSection();
         }
@@ -1630,6 +1646,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      *
      * @return Whether any scroll was consumed in either direction.
      */
+    /**
+     * 这个方法最终调用了如果是水平滑动的话调用mLayout.scrollHorizontallyBy(x, mRecycler, mState)，
+     * 如果是垂直滑动的话调用了mLayout.scrollVerticallyBy，
+     * 所以最终滑动多少距离由LayoutManager实现，
+     * 那么你想实现左右滑动就重写 scrollHorizontallyBy 方法，如果实现垂直滑动就重写 scrollVerticallyBy 方法
+     */
     boolean scrollByInternal(int x, int y, MotionEvent ev) {
         int unconsumedX = 0, unconsumedY = 0;
         int consumedX = 0, consumedY = 0;
@@ -1640,10 +1662,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             onEnterLayoutOrScroll();
             TraceCompat.beginSection(TRACE_SCROLL_TAG);
             if (x != 0) {
+				// TODO: Silion 想实现左右滑动就重写 scrollHorizontallyBy 方法
                 consumedX = mLayout.scrollHorizontallyBy(x, mRecycler, mState);
                 unconsumedX = x - consumedX;
             }
             if (y != 0) {
+				// TODO: Silion 想实现垂直滑动就重写 scrollVerticallyBy 方法
                 consumedY = mLayout.scrollVerticallyBy(y, mRecycler, mState);
                 unconsumedY = y - consumedY;
             }
@@ -2681,6 +2705,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             return false;
         }
 
+        // TODO: Silion 设置水平、垂直滑动
         final boolean canScrollHorizontally = mLayout.canScrollHorizontally();
         final boolean canScrollVertically = mLayout.canScrollVertically();
 
@@ -2769,6 +2794,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                     mLastTouchX = x - mScrollOffset[0];
                     mLastTouchY = y - mScrollOffset[1];
 
+                    // TODO: Silion 如果满足一些列条件的话滑动最后将交给scrollByInternal方法处理
                     if (scrollByInternal(
                             canScrollHorizontally ? dx : 0,
                             canScrollVertically ? dy : 0,
@@ -2793,6 +2819,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                         -VelocityTrackerCompat.getXVelocity(mVelocityTracker, mScrollPointerId) : 0;
                 final float yvel = canScrollVertically ?
                         -VelocityTrackerCompat.getYVelocity(mVelocityTracker, mScrollPointerId) : 0;
+				// TODO: Silion 如果认为是快速滑动的话，那么会调用fling方法进行移动
                 if (!((xvel != 0 || yvel != 0) && fling((int) xvel, (int) yvel))) {
                     setScrollState(SCROLL_STATE_IDLE);
                 }
@@ -2892,10 +2919,24 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
         if (mLayout == null) {
+			// TODO: Silion 1. 没有LayoutManager的情况
             defaultOnMeasure(widthSpec, heightSpec);
             return;
         }
         if (mLayout.mAutoMeasure) {
+			/**
+			 * 在RecyclerView的早期版本，当你为其设置了wrap_content值，
+			 * 但在其中的内容改变的时候，RecyclerView并不能改变其大小来适应内部的内容。
+			 * 因此后来加入了自动测量机制，来解决这个问题。
+			 * 而且现在我们常用的三个LayoutManager，在其构造函数中，均已经设置了开启自动测量。
+			 * 所以我们现在可以放心大胆的为RecyclerView设置wrap_content
+			 */
+			// TODO: Silion 自动测量
+			// 第一部分：
+            // 1) 首先执行LayoutManager的onMeasure方法。
+            // 2) 检查如果width和height都已经是精确值，那么就不用再根据内容进行计算所
+            //    需要的width和height，那么跳过之后的步骤。如果有其中任何一个值不是精确值，
+            //    则进入到下面计算所需长宽的步骤。
             final int widthMode = MeasureSpec.getMode(widthSpec);
             final int heightMode = MeasureSpec.getMode(heightSpec);
             final boolean skipMeasure = widthMode == MeasureSpec.EXACTLY
@@ -2904,6 +2945,10 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             if (skipMeasure || mAdapter == null) {
                 return;
             }
+			// 第二部分：
+            // 1) 开启布局流程计算出所有Child的边界
+            // 2) 然后根据计算出的Child的边界计算出RecyclerView的所需width和height
+            // 3) 检查是否需要再次测量
             if (mState.mLayoutStep == State.STEP_START) {
                 dispatchLayoutStep1();
             }
@@ -2913,11 +2958,13 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             mState.mIsMeasuring = true;
             dispatchLayoutStep2();
 
+            // TODO: Silion 布局过程结束，根据Children中的边界信息计算并设置RecyclerView长宽的测量值
             // now we can get the width and height from the children.
             mLayout.setMeasuredDimensionFromChildren(widthSpec, heightSpec);
 
             // if RecyclerView has non-exact width and height and if there is at least one child
             // which also has non-exact width & height, we have to re-measure.
+            // TODO: 检查是否需要再此测量。如果RecyclerView仍然有非精确的宽和高，或者这里还有至少一个Child还有非精确的宽和高，我们就需要在此测量。
             if (mLayout.shouldMeasureTwice()) {
                 mLayout.setMeasureSpecs(
                         MeasureSpec.makeMeasureSpec(getMeasuredWidth(), MeasureSpec.EXACTLY),
@@ -2928,16 +2975,29 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                 mLayout.setMeasuredDimensionFromChildren(widthSpec, heightSpec);
             }
         } else {
+            /**
+             * 当我们使用系统提供的那三个LayoutManager的时候，默认是开启自动测绘的。
+             * 除非，你在初始化LayoutManager之后，自己通过setAutoMeasureEnabled(false)方法设置成false。
+             * 不然不会走到非自动测绘流程的。但是如果我们是使用的自己自定义的LayoutManager，
+             * 而且我们自定义的LayoutManager又没有在初始化的时候开启自动测绘，那么默认将会是不开启自动测绘。
+             * 这个时候会走到非自动测绘流程
+             */
+            // TODO: Silion 非自动测量
             if (mHasFixedSize) {
+				// 第一部分：如果RecyclerView已经设置了Size固定，则执行LayoutManager的onMeasure方法
                 mLayout.onMeasure(mRecycler, mState, widthSpec, heightSpec);
                 return;
             }
             // custom onMeasure
+            // 第二部分：
+            // 1) 如果在测量的过程中有数据有更新，则先处理更新的数据
+            // 2) 执行自定义测量流程，这需要自定义的LayoutManager实现onMeasure方法。
             if (mAdapterUpdateDuringMeasure) {
                 eatRequestLayout();
                 processAdapterUpdatesAndSetAnimationFlags();
 
                 if (mState.mRunPredictiveAnimations) {
+					// 如果设置了动画，mState.mInPreLayout设为true
                     mState.mInPreLayout = true;
                 } else {
                     // consume remaining updates to provide a consistent state with the layout pass.
@@ -2948,12 +3008,15 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                 resumeRequestLayout(false);
             }
 
+            // 处理完新更新的数据，然后执行自定义测量操作。
             if (mAdapter != null) {
+				// 为状态添加子View的数量
                 mState.mItemCount = mAdapter.getItemCount();
             } else {
                 mState.mItemCount = 0;
             }
             eatRequestLayout();
+			// TODO: Silion 调用 LayoutManager 的 onMeasure 方法
             mLayout.onMeasure(mRecycler, mState, widthSpec, heightSpec);
             resumeRequestLayout(false);
             mState.mInPreLayout = false; // clear
@@ -2966,6 +3029,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
     void defaultOnMeasure(int widthSpec, int heightSpec) {
         // calling LayoutManager here is not pretty but that API is already public and it is better
         // than creating another method since this is internal.
+        // TODO: Silion 调用了LayoutManager的方法，测量自己，并没有测量子View
         final int width = LayoutManager.chooseSize(widthSpec,
                 getPaddingLeft() + getPaddingRight(),
                 ViewCompat.getMinimumWidth(this));
@@ -3157,7 +3221,6 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
     }
 
     /**
-     * dispatchLayout 方法目的是 layout RecyclerView 的 childview，并且记录动画执行的过程、变更。
      * Wrapper around layoutChildren() that handles animating changes caused by layout.
      * Animations work on the assumption that there are five different kinds of items
      * in play:
@@ -3181,6 +3244,24 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * {@link ItemAnimator#animateAppearance(ViewHolder, ItemHolderInfo, ItemHolderInfo)}
      * and changed views are animated via
      * {@link ItemAnimator#animateChange(ViewHolder, ViewHolder, ItemHolderInfo, ItemHolderInfo)}.
+     *
+     * dispatchLayout 方法目的是 layout RecyclerView 的 childview，并且记录动画执行的过程、变更。
+     * RecyclerView的布局过程分为3步：
+     * - dispatchLayoutStep1
+     * - dispatchLayoutStep2
+     * - dispatchLayoutStep3
+     * 在之前自动化Measure过程中我们为了得到Child的边界值，使用了dispatchLayoutStep1和dispatchLayoutStep2，
+     * 所以在dispatchLayout中分了三种情况进行处理:
+     * 没有执行过布局流程的情况
+     * 执行过布局流程，但是之后size又有变化的情况
+     * 执行过布局流程，可以直接使用之前数据的情况
+     * 不过，无论什么情况，最终都是完成dispatchLayoutStep1，dispatchLayoutStep2和dispatchLayoutStep3这三步，这样的情况区分只是为了避免重复计算
+     *
+     * RecyclerView并没有对内部的View进行布局。
+     * 而是交给LayoutManager去做具体的布局操作，因此才会有LinearLayoutManager，GridLayoutManager,StaggeredGridLayoutManager这样灵活的布局。
+     * 而且我们可以通过实现onLayoutChildren，自定义LayoutManager。
+     * RecyclerView的布局过程中包含很多动画相关的处理。
+     * RecyclerView的数据改变的动画是在布局过程的第三步中统一触发的。并不是一调用notify之后立即触发。
      */
     void dispatchLayout() {
         if (mAdapter == null) {
@@ -3195,8 +3276,10 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         }
         mState.mIsMeasuring = false;
         if (mState.mLayoutStep == State.STEP_START) {
+			// TODO: Silion 第一步
             dispatchLayoutStep1();
             mLayout.setExactMeasureSpecsFrom(this);
+		    // TODO: Silion 第二步（会调用LayoutManager.onLayoutChildren）
             dispatchLayoutStep2();
         } else if (mAdapterHelper.hasUpdates() || mLayout.getWidth() != getWidth() ||
                 mLayout.getHeight() != getHeight()) {
@@ -3208,6 +3291,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             // always make sure we sync them (to ensure mode is exact)
             mLayout.setExactMeasureSpecsFrom(this);
         }
+		// TODO: Silion 第三步
         dispatchLayoutStep3();
     }
 
@@ -3290,24 +3374,38 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * - 进行 adapter 布局的更新
      * - 决定执行哪个动画
      * - 保存当前 view 的信息
-     * - 如果有必要，运行 predictive layout
+     * - 如果有必要，再进行上一布局操作，并保存它的信息
      */
     private void dispatchLayoutStep1() {
+        // 该部分判断状态和更改状态以及保存一些信息
         mState.assertLayoutStep(State.STEP_START);
         mState.mIsMeasuring = false;
         eatRequestLayout();
         mViewInfoStore.clear();
         onEnterLayoutOrScroll();
         saveFocusInfo();
+		// TODO: Silion 这个是动画流程的中间过程。是处理Adapter更新，并计算动画类型的。
         processAdapterUpdatesAndSetAnimationFlags();
+		// 设置一些状态，保存一些信息
         mState.mTrackOldChangeHolders = mState.mRunSimpleAnimations && mItemsChanged;
         mItemsAddedOrRemoved = mItemsChanged = false;
         mState.mInPreLayout = mState.mRunPredictiveAnimations;
         mState.mItemCount = mAdapter.getItemCount();
         findMinMaxChildLayoutPositions(mMinMaxLayoutPositions);
 
+        // 下面的内容是需要运行动画的情况下进行的，主要做的事情就是找出那些要需要进
+        // 行上一布局操作的ViewHolder，并且保存它们的边界信息。如果有更新操作(这个更新
+        // 指的是内容的更新，不是插入删除的这种更新)，然后保存这些更新的ViewHolder
         if (mState.mRunSimpleAnimations) {
             // Step 0: Find out where all non-removed items are, pre-layout
+            // TODO: Silion 
+            /**
+             * 遍历所有显示着的的ViewHolder，
+             * 找到那些没有被移除的ViewHolder，储存在mViewInfoStore中，
+             * 并找到那些只有内容更新的ViewHolder储存在mViewInfoStore中，
+             * 前后存储的容器不同，然后准备执行之前的布局。
+             * mItemAnimator的recordPreLayoutInformation方法就是将ViewHolder的边界信息记录在ItemHolderInfo中。
+             */
             int count = mChildHelper.getChildCount();
             for (int i = 0; i < count; ++i) {
                 final ViewHolder holder = getChildViewHolderInt(mChildHelper.getChildAt(i));
@@ -3333,6 +3431,14 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                 }
             }
         }
+		// 下面的内容是需要在布局结束之后运行动画的情况下执行的。主要做的事情就是
+    	// 执行上一布局操作，上一布局操作其实就是先以上一次的状态执行一遍LayoutManager
+    	// 的onLayoutChildren方法，其实RecyclerView的布局策略就是在
+    	// LayoutManager的onLayoutChildren方法中。执行一次它就获得了所有
+    	// ViewHolder的边界信息。只不过，这次获得的是之前状态下的ViewHolder的
+    	// 边界信息。不过这个应该是要在LayoutManager中，根据state的isPreLayout
+    	// 的返回值，选择使用新的还是旧的position。但我在系统给的几个LayoutManager中
+    	// 都没有看到。
         if (mState.mRunPredictiveAnimations) {
             // Step 1: run prelayout: This will use the old positions of items. The layout manager
             // is expected to layout everything, even removed items (though not to add removed
@@ -3374,6 +3480,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         } else {
             clearOldPositions();
         }
+		//恢复状态
         onExitLayoutOrScroll();
         resumeRequestLayout(false);
         mState.mLayoutStep = State.STEP_LAYOUT;
@@ -3384,6 +3491,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * This step might be run multiple times if necessary (e.g. measure).
      */
     private void dispatchLayoutStep2() {
+        // 设置状态
         eatRequestLayout();
         onEnterLayoutOrScroll();
         mState.assertLayoutStep(State.STEP_LAYOUT | State.STEP_ANIMATIONS);
@@ -3392,7 +3500,8 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         mState.mDeletedInvisibleItemCountSincePreviousLayout = 0;
 
         // Step 2: Run layout
-        mState.mInPreLayout = false;
+        mState.mInPreLayout = false; // 更改此状态，确保不是会执行上一布局操作
+		// TODO: Silion 调用 LayoutManager 的 onLayoutChildren方法(在子类实现这个方法)实现真正的布局
         mLayout.onLayoutChildren(mRecycler, mState);
 
         mState.mStructureChanged = false;
@@ -3416,6 +3525,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         onEnterLayoutOrScroll();
         mState.mLayoutStep = State.STEP_START;
         if (mState.mRunSimpleAnimations) {
+			// 需要动画的情况。找出ViewHolder现在的位置，并且处理改变动画。最后触发动画。
             // Step 3: Find out where things are now, and process change animations.
             // traverse list in reverse because we may call animateChange in the loop which may
             // remove the target view holder.
@@ -3464,7 +3574,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             }
 
             // Step 4: Process view info lists and trigger animations
-            // 根据一些保存的 flag 状态去触发动画api
+            // TODO: Silion 根据一些保存的 flag 状态去触发动画api
             mViewInfoStore.process(mViewInfoProcessCallback);
         }
 
@@ -3849,6 +3959,11 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         requestLayout();
     }
 
+    /**
+     * 该方法主要是遍历所有的ViewHolder，
+     * 然后把在插入位置之后的ViewHolder的位置向后移动插入的个数，
+     * 最后在对Recycler中缓存的ViewHolder做同样的操作，最后申请重新布局。
+     */
     void offsetPositionRecordsForInsert(int positionStart, int itemCount) {
         final int childCount = mChildHelper.getUnfilteredChildCount();
         for (int i = 0; i < childCount; i++) {
@@ -4362,13 +4477,15 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             // changed/invalid items should not be updated until they are rebound.
             return lp.mDecorInsets;
         }
+		// TODO: Silion lp.mDecorInsets布局的时候会用到
         final Rect insets = lp.mDecorInsets;
         insets.set(0, 0, 0, 0);
         final int decorCount = mItemDecorations.size();
         for (int i = 0; i < decorCount; i++) {
             mTempRect.set(0, 0, 0, 0);
-			// TODO: Silion 所有添加分割线需要的空间累加的总和， 重写getItemOffsets
+			// TODO: Silion 这里调用getItemOffsets，实现分割线重写该方法
             mItemDecorations.get(i).getItemOffsets(mTempRect, child, this, mState);
+		    // TODO: Silion 所有分割线累加
             insets.left += mTempRect.left;
             insets.top += mTempRect.top;
             insets.right += mTempRect.right;
@@ -4842,8 +4959,11 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
         @Override
         public void onItemRangeInserted(int positionStart, int itemCount) {
+            // 1) 断言不在布局或者滚动过程中，其实就是如果在布局或者滚动过程中，则不会执行下面的内容
             assertNotInLayoutOrScroll(null);
+			// TODO: Silion 交给AdapterHelper添加请求
             if (mAdapterHelper.onItemRangeInserted(positionStart, itemCount)) {
+				// TODO: Silion 返回true后出发更新操作
                 triggerUpdateProcessor();
             }
         }
@@ -4864,11 +4984,18 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             }
         }
 
+        /**
+         * 触发更新处理操作，分为两种情况，
+         * 在 版本大于16 且 已经Attach 并且 设置了大小固定 的情况下，进行mUpdateChildViewsRunnable中的操作。
+         * 否则请求布局。
+         */
         void triggerUpdateProcessor() {
             if (POST_UPDATES_ON_ANIMATION && mHasFixedSize && mIsAttached) {
+				// TODO: Silion 如果设置了mHasFixedSize，ViewCompat.postOnAnimation
                 ViewCompat.postOnAnimation(RecyclerView.this, mUpdateChildViewsRunnable);
             } else {
                 mAdapterUpdateDuringMeasure = true;
+				// TODO: Silion 如果没有设置mHasFixedSize＝true，最早会在这里requestLayout()
                 requestLayout();
             }
         }
@@ -5201,11 +5328,13 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             ViewHolder holder = null;
             // 0) If there is a changed scrap, try to find from there
             if (mState.isPreLayout()) {
+				// TODO: Silion 获取holder
                 holder = getChangedScrapViewForPosition(position);
                 fromScrap = holder != null;
             }
             // 1) Find from scrap by position
             if (holder == null) {
+				// TODO: Silion 获取holder
                 holder = getScrapViewForPosition(position, INVALID_TYPE, dryRun);
                 if (holder != null) {
                     if (!validateViewHolderForOffsetPosition(holder)) {
@@ -5239,6 +5368,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                 final int type = mAdapter.getItemViewType(offsetPosition);
                 // 2) Find from scrap via stable ids, if exists
                 if (mAdapter.hasStableIds()) {
+					// TODO: Silion 获取holder
                     holder = getScrapViewForId(mAdapter.getItemId(offsetPosition), type, dryRun);
                     if (holder != null) {
                         // update position
@@ -5252,6 +5382,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                     final View view = mViewCacheExtension
                             .getViewForPositionAndType(this, position, type);
                     if (view != null) {
+						// TODO: Silion 获取holder
                         holder = getChildViewHolder(view);
                         if (holder == null) {
                             throw new IllegalArgumentException("getViewForPositionAndType returned"
@@ -5270,6 +5401,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                         Log.d(TAG, "getViewForPosition(" + position + ") fetching from shared "
                                 + "pool");
                     }
+					// TODO: Silion 获取holder
                     holder = getRecycledViewPool().getRecycledView(type);
                     if (holder != null) {
                         holder.resetInternal();
@@ -5279,6 +5411,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                     }
                 }
                 if (holder == null) {
+					// TODO: Silion 都获取不到holder，调用createViewHolder创建
                     holder = mAdapter.createViewHolder(RecyclerView.this, type);
                     if (DEBUG) {
                         Log.d(TAG, "getViewForPosition created new ViewHolder");
@@ -6026,6 +6159,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * within a {@link RecyclerView}.</p>
      */
     public static abstract class Adapter<VH extends ViewHolder> {
+        // TODO: Silion 被观察者
         private final AdapterDataObservable mObservable = new AdapterDataObservable();
         private boolean mHasStableIds = false;
 
@@ -7130,6 +7264,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
          */
         public void onLayoutChildren(Recycler recycler, State state) {
             Log.e(TAG, "You must override onLayoutChildren(Recycler recycler, State state) ");
+			// TODO: Silion 测量和布局都通过重写该方法实现，LinearLayoutManager重写该方法->fill()->layoutChunk 测量子View
         }
 
         /**
@@ -8187,10 +8322,17 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         public void measureChildWithMargins(View child, int widthUsed, int heightUsed) {
             final LayoutParams lp = (LayoutParams) child.getLayoutParams();
 
+            // TODO: Silion 得到分割线的大小
             final Rect insets = mRecyclerView.getItemDecorInsetsForChild(child);
             widthUsed += insets.left + insets.right;
             heightUsed += insets.top + insets.bottom;
 
+            // TODO: Silion 计算
+            /**
+             * 最终子View的大小如果设置为FILL_PARENT或者WRAP_CONTENT或者match_parent，
+             * 那么resultSize=RecyclerView的大小-pading-margin-分割线大小，
+             * 如果子View设置了固定大小，那么宽高就是固定值
+             */
             final int widthSpec = getChildMeasureSpec(getWidth(), getWidthMode(),
                     getPaddingLeft() + getPaddingRight() +
                             lp.leftMargin + lp.rightMargin + widthUsed, lp.width,
@@ -8399,7 +8541,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
         public void layoutDecoratedWithMargins(View child, int left, int top, int right,
                 int bottom) {
             final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+			// TODO: Silion lp.mDecorInset 就是分割线总和
             final Rect insets = lp.mDecorInsets;
+			// TODO: Silion 子View进行布局，
             child.layout(left + insets.left + lp.leftMargin, top + insets.top + lp.topMargin,
                     right - insets.right - lp.rightMargin,
                     bottom - insets.bottom - lp.bottomMargin);
@@ -8943,6 +9087,11 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
          * @param heightSpec Height {@link android.view.View.MeasureSpec}
          */
         public void onMeasure(Recycler recycler, State state, int widthSpec, int heightSpec) {
+            // TODO: Silion LinearLayoutManager并没有重写该方法，所以又直接调用了RecyclerView的方法
+            /**
+             * 我们可以重写LayoutManager的onMeasure方法进行测量子view
+             * 不过这时还没有调用CreateHodler所以没有子View，所以一般此方法不用重写
+             */
             mRecyclerView.defaultOnMeasure(widthSpec, heightSpec);
         }
 

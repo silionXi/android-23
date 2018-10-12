@@ -55,6 +55,7 @@ class AdapterHelper implements OpReorderer.Callback {
 
     private Pools.Pool<UpdateOp> mUpdateOpPool = new Pools.SimplePool<UpdateOp>(UpdateOp.POOL_SIZE);
 
+    // 一个待处理更新操作的列表，该列表中存放所有等待处理的操作信息。
     final ArrayList<UpdateOp> mPendingUpdates = new ArrayList<UpdateOp>();
 
     final ArrayList<UpdateOp> mPostponedList = new ArrayList<UpdateOp>();
@@ -90,6 +91,13 @@ class AdapterHelper implements OpReorderer.Callback {
         mExistingUpdateTypes = 0;
     }
 
+    /**
+     * 预处理做了以下几件事情:
+     * <1> 先将待处理操作重排。
+     * <2> 应用所有操作 
+     * <3> 清空待处理操作列表
+     * dispatchLayoutStep1->processAdapterUpdatesAndSetAnimationFlags->preProcess也会调用
+     */
     void preProcess() {
         mOpReorderer.reorderOps(mPendingUpdates);
         final int count = mPendingUpdates.size();
@@ -97,6 +105,7 @@ class AdapterHelper implements OpReorderer.Callback {
             UpdateOp op = mPendingUpdates.get(i);
             switch (op.cmd) {
                 case UpdateOp.ADD:
+					// TODO: Silion 添加
                     applyAdd(op);
                     break;
                 case UpdateOp.REMOVE:
@@ -437,9 +446,11 @@ class AdapterHelper implements OpReorderer.Callback {
         if (DEBUG) {
             Log.d(TAG, "postponing " + op);
         }
+		// TODO: Silion 先将操作添加到推迟的操作列表中，然后将操作的内容交给回调处理
         mPostponedList.add(op);
         switch (op.cmd) {
             case UpdateOp.ADD:
+				// TODO: Silion 该回调是在 RecyclerView.initAdapterManager 初始化AdapterHelper的时候设置进来的
                 mCallback.offsetPositionsForAdd(op.positionStart, op.itemCount);
                 break;
             case UpdateOp.MOVE:
@@ -512,6 +523,9 @@ class AdapterHelper implements OpReorderer.Callback {
 
     /**
      * @return True if updates should be processed.
+     * 该方法将插入操作的信息存储到一个UpdateOp中，并添加到待处理更新操作列表中，
+     * 如果操作列表中的值是1，就返回真表示需要处理操作，等于1的判断避免重复触发处理操作。
+     * obtainUpdateOp内部是通过池来得到一个UpdateOp对象。
      */
     boolean onItemRangeInserted(int positionStart, int itemCount) {
         if (itemCount < 1) {
